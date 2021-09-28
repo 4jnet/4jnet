@@ -667,18 +667,18 @@ contract MoonToken is Context, IERC20, Ownable {
     address[] private _excluded;
 
     uint256 private constant MAX = ~uint256(0);
-    uint256 private _tTotal = 1000000000 * 10**6 * 10**9;
+    uint256 private constant _tTotal = 1000000000 * 10**6 * 10**9;
     uint256 private _rTotal = (MAX - (MAX % _tTotal));
     uint256 private _tFeeTotal;
 
-    string private _name = "4JNET";
-    string private _symbol = "4JNET";
-    uint8 private _decimals = 9;
+    string private constant _name = "4JNET";
+    string private constant _symbol = "4JNET";
+    uint8 private constant _decimals = 9;
 
     uint256 public _taxFee = 6;
     uint256 private _previousTaxFee = _taxFee;
 
-    uint256 public _NFTFee = 3;
+    uint256 public constant _NFTFee = 3; //NFT's owner has a beeter taxFee
     IERC721 public _NFTContract;
     bool private _NFTContractSet = false;
 
@@ -688,7 +688,7 @@ contract MoonToken is Context, IERC20, Ownable {
     address public constant _liquidityOwner = address(0x0000000000000000000000000000000000000001);
 
     address public _starter;
-    uint256 public _startTime;
+    uint256 public _startTime = 1638316800; //latest start time is 2021-12-01 00:00:00 GMT
 
     IUniswapV2Router02 public immutable uniswapV2Router;
     address public immutable uniswapV2Pair;
@@ -696,7 +696,7 @@ contract MoonToken is Context, IERC20, Ownable {
     bool inSwapAndLiquify;
     bool public swapAndLiquifyEnabled = true;
     
-    uint256 public _maxTxAmount = 1000000000 * 10**6 * 10**9;
+    uint256 public _maxTxAmount = 10000000 * 10**6 * 10**9;
     uint256 private numTokensSellToAddToLiquidity = 500000 * 10**6 * 10**9;
     
     event MinTokensBeforeSwapUpdated(uint256 minTokensBeforeSwap);
@@ -704,7 +704,7 @@ contract MoonToken is Context, IERC20, Ownable {
     event SwapAndLiquify(
         uint256 tokensSwapped,
         uint256 ethReceived,
-        uint256 tokensIntoLiqudity
+        uint256 tokensIntoLiquidity
     );
     
     modifier lockTheSwap {
@@ -716,7 +716,7 @@ contract MoonToken is Context, IERC20, Ownable {
     constructor () public {
         _rOwned[_msgSender()] = _rTotal;
         
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F); //BSC PancakeRouter
+        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E); //BSC PancakeRouter V2
          // Create a uniswap pair for this new token
         uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
             .createPair(address(this), _uniswapV2Router.WETH());
@@ -727,19 +727,19 @@ contract MoonToken is Context, IERC20, Ownable {
         //exclude owner and this contract from fee
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
-        
+
         emit Transfer(address(0), _msgSender(), _tTotal);
     }
 
-    function name() public view returns (string memory) {
+    function name() public pure returns (string memory) {
         return _name;
     }
 
-    function symbol() public view returns (string memory) {
+    function symbol() public pure returns (string memory) {
         return _symbol;
     }
 
-    function decimals() public view returns (uint8) {
+    function decimals() public pure returns (uint8) {
         return _decimals;
     }
 
@@ -827,7 +827,7 @@ contract MoonToken is Context, IERC20, Ownable {
     }
 
     function includeInReward(address account) external onlyOwner() {
-        require(_isExcluded[account], "Account is already excluded");
+        require(_isExcluded[account], "Account is not excluded");
         for (uint256 i = 0; i < _excluded.length; i++) {
             if (_excluded[i] == account) {
                 _excluded[i] = _excluded[_excluded.length - 1];
@@ -861,14 +861,6 @@ contract MoonToken is Context, IERC20, Ownable {
     function includeInFee(address account) public onlyOwner {
         _isExcludedFromFee[account] = false;
     }
-    
-    function setTaxFeePercent(uint256 taxFee) external onlyOwner() {
-        _taxFee = taxFee;
-    }
-
-    function setNFTFeePercent(uint256 NFTFee) external onlyOwner() {
-        _NFTFee = NFTFee;
-    }
 
     function setNFTContract(IERC721 NFTContract) external onlyOwner() {
         require(!_NFTContractSet, "NFTContract has been set");
@@ -883,14 +875,10 @@ contract MoonToken is Context, IERC20, Ownable {
 
     function setStartTime(uint256 startTime) external {
         require(_starter == _msgSender(), "Only starter can set startTime");
-        require(_startTime == 0, "StartTime has been set");
+        require(startTime < _startTime, "StartTime set error");
         _startTime = startTime;
     }
 
-    function setLiquidityFeePercent(uint256 liquidityFee) external onlyOwner() {
-        _liquidityFee = liquidityFee;
-    }
-   
     function setMaxTxPercent(uint256 maxTxPercent) external onlyOwner() {
         _maxTxAmount = _tTotal.mul(maxTxPercent).div(
             10**2
@@ -902,7 +890,7 @@ contract MoonToken is Context, IERC20, Ownable {
         emit SwapAndLiquifyEnabledUpdated(_enabled);
     }
     
-     //to recieve ETH from uniswapV2Router when swaping
+     //to receive ETH from uniswapV2Router when swapping
     receive() external payable {}
 
     function _reflectFee(uint256 rFee, uint256 tFee) private {
@@ -957,7 +945,7 @@ contract MoonToken is Context, IERC20, Ownable {
     }
     
     function calculateTaxFee(uint256 _amount, bool hasNFT) private view returns (uint256) {
-        if ( hasNFT ) {
+        if ( hasNFT &&  _taxFee > 0 ) {
             return _amount.mul(_NFTFee).div(10**2);
         }
         return _amount.mul(_taxFee).div(
@@ -1008,7 +996,7 @@ contract MoonToken is Context, IERC20, Ownable {
         require(amount > 0, "Transfer amount must be greater than zero");
         if(from != owner() && to != owner()){
             require(amount <= _maxTxAmount, "Transfer amount exceeds the maxTxAmount.");
-            require(_startTime > 0 && block.timestamp > _startTime, "The start time is not up.");
+            require(block.timestamp > _startTime, "The start time is not up.");
         }
 
         // is the token balance of this contract address over the min number of
@@ -1116,8 +1104,6 @@ contract MoonToken is Context, IERC20, Ownable {
             _transferFromExcluded(sender, recipient, amount);
         } else if (!_isExcluded[sender] && _isExcluded[recipient]) {
             _transferToExcluded(sender, recipient, amount);
-        } else if (!_isExcluded[sender] && !_isExcluded[recipient]) {
-            _transferStandard(sender, recipient, amount);
         } else if (_isExcluded[sender] && _isExcluded[recipient]) {
             _transferBothExcluded(sender, recipient, amount);
         } else {
