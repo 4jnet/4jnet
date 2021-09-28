@@ -390,33 +390,32 @@ library Address {
 
 abstract contract Ownable is Context {
     address private _owner;
-    address public pendingOwner;
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     constructor() internal {
-        _setOwner(_msgSender());
+        _owner = _msgSender();
+        emit OwnershipTransferred(address(0), _owner);
     }
     function owner() public view returns (address) {
         return _owner;
     }
     modifier onlyOwner() {
-        require(owner() == _msgSender(), "Ownable: caller is not the owner");
+        require(isOwner(), "Ownable: caller is not the owner");
         _;
     }
-    modifier onlyPendingOwner() {
-        require(pendingOwner == _msgSender(), "Ownable: caller is not the pendingOwner");
-        _;
+    function isOwner() public view returns (bool) {
+        return _msgSender() == _owner;
+    }
+    function renounceOwnership() public onlyOwner {
+        emit OwnershipTransferred(_owner, address(0));
+        _owner = address(0);
     }
     function transferOwnership(address newOwner) public onlyOwner {
-        pendingOwner = newOwner;
+        _transferOwnership(newOwner);
     }
-    function _setOwner(address newOwner) private {
-        address oldOwner = _owner;
+    function _transferOwnership(address newOwner) internal {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
-        emit OwnershipTransferred(oldOwner, newOwner);
-    }
-    function claimOwnership() public onlyPendingOwner {
-        _setOwner(pendingOwner);
-        pendingOwner = address(0);
     }
 }
 
